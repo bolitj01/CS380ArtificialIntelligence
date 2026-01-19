@@ -1,10 +1,13 @@
 import json
 import matplotlib.pyplot as plt
 import networkx as nx
+import os
 from matplotlib.lines import Line2D
 
 # Default path to the Indiana locations JSON
-INDIANA_JSON_PATH = "./Chapter 3 - Solving Problems With Search/indiana_locations.json"
+# Use the directory of this file as the base
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+INDIANA_JSON_PATH = os.path.join(_SCRIPT_DIR, "indiana_locations.json")
 
 
 class Node:
@@ -55,8 +58,13 @@ def reconstruct_path(parents: dict, goal: str):
 
 
 def draw_search_result(graph: nx.Graph, pos: dict, visited_order: list, path: list,
-                       start: str, goal: str, algorithm_name: str = "Search"):
-    """Render the graph, highlighting visited nodes/edges and the final path."""
+                       start: str, goal: str, algorithm_name: str = "Search", 
+                       show_edge_weights: bool = True):
+    """Render the graph, highlighting visited nodes/edges and the final path.
+    
+    Args:
+        show_edge_weights: If True, display edge weight labels. Set to False for uniform-cost searches.
+    """
     visited_set = set(visited_order)
     path_set = set(path)
 
@@ -115,14 +123,15 @@ def draw_search_result(graph: nx.Graph, pos: dict, visited_order: list, path: li
         ax=ax
     )
 
-    edge_labels = nx.get_edge_attributes(graph, "weight")
-    nx.draw_networkx_edge_labels(
-        graph, pos,
-        edge_labels=edge_labels,
-        font_size=14,
-        font_color="black",
-        ax=ax
-    )
+    if show_edge_weights:
+        edge_labels = nx.get_edge_attributes(graph, "weight")
+        nx.draw_networkx_edge_labels(
+            graph, pos,
+            edge_labels=edge_labels,
+            font_size=14,
+            font_color="black",
+            ax=ax
+        )
 
     legend_elements = [
         Line2D([0], [0], marker='o', color='w', label='Path node', markerfacecolor='#ff9999', markeredgecolor='black', markersize=12),

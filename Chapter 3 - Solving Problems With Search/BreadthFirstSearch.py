@@ -25,14 +25,17 @@ def breadth_first_search(graph: nx.Graph, start: str, goal: str):
         node = frontier.popleft()
         explored.add(node.state)
         visited.append(node.state)
+        print(f"Exploring: {node.state} (frontier size: {len(frontier)})")
         
         for child in node.expand(graph):
             if child.state not in explored and child not in frontier:
                 parents[child.state] = node.state
                 if child.state == goal:
                     visited.append(child.state)
+                    print(f"✓ Found goal: {child.state}")
                     return visited, parents
                 frontier.append(child)
+                print(f"  Adding to frontier: {child.state}")
     
     return visited, parents
 
@@ -56,6 +59,7 @@ def main():
         START,
         GOAL,
         algorithm_name="Breadth-First Search",
+        show_edge_weights=False,
     )
 
 

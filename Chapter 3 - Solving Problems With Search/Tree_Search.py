@@ -116,14 +116,6 @@ nx.draw_networkx_labels(
     font_weight="bold"
 )
 
-# Draw edge labels (costs)
-edge_labels = nx.get_edge_attributes(tree, 'weight')
-nx.draw_networkx_edge_labels(
-    tree, pos,
-    edge_labels=edge_labels,
-    font_size=9
-)
-
 plt.title(
     f"Tree Search from {start_node} (2 Depth Levels)",
     fontsize=16,

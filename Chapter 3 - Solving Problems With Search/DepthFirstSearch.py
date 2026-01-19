@@ -57,6 +57,7 @@ def main():
         START,
         GOAL,
         algorithm_name="Depth-First Search",
+        show_edge_weights=False,
     )
 
 
