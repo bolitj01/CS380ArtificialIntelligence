@@ -77,13 +77,33 @@ def euclidean_distance(city_a: str, city_b: str, positions: dict) -> float:
     return ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
 
 
+def label_heuristic(graph: nx.Graph, pos: dict, goal: str, heuristic_func) -> dict:
+    """Create node labels with heuristic values from every node to goal.
+    
+    Args:
+        graph: The graph containing all nodes
+        pos: Position dict for the nodes
+        goal: The goal node
+        heuristic_func: Function that takes (city_a, city_b, positions) and returns heuristic value
+    
+    Returns:
+        Dict mapping node names to label strings with heuristic values
+    """
+    labels = {}
+    for node in graph.nodes():
+        h_value = heuristic_func(node, goal, pos)
+        labels[node] = f"{node.replace(' ', '\n')}\nh={h_value:.2f}"
+    return labels
+
+
 def draw_search_result(graph: nx.Graph, pos: dict, visited_order: list, path: list,
                        start: str, goal: str, algorithm_name: str = "Search", 
-                       show_edge_weights: bool = True):
+                       show_edge_weights: bool = True, node_labels: dict = None):
     """Render the graph, highlighting visited nodes/edges and the final path.
     
     Args:
         show_edge_weights: If True, display edge weight labels. Set to False for uniform-cost searches.
+        node_labels: Optional dict mapping node names to label strings (e.g., from label_heuristic).
     """
     visited_set = set(visited_order)
     path_set = set(path)
@@ -134,10 +154,13 @@ def draw_search_result(graph: nx.Graph, pos: dict, visited_order: list, path: li
     )
 
     labels = {node: node.replace(" ", "\n") for node in graph.nodes()}
+    if node_labels:
+        labels = node_labels
+    
     nx.draw_networkx_labels(
         graph, pos,
         labels=labels,
-        font_size=11,
+        font_size=12,
         font_color="black",
         font_weight="bold",
         ax=ax

@@ -7,6 +7,7 @@ from graph_utils import (
     reconstruct_path,
     euclidean_distance, # alternative heuristic
     manhattan_distance, # alternative heuristic
+    label_heuristic,
     Node,
 )
 
@@ -67,6 +68,9 @@ def main():
     print(f"Path length: {len(path)}")
     print(f"Path: {path if path else 'No path found'}")
 
+    # Create node labels with heuristic values (using manhattan_distance)
+    node_labels = label_heuristic(graph, pos, GOAL, manhattan_distance)
+
     draw_search_result(
         graph,
         pos,
@@ -75,7 +79,8 @@ def main():
         START,
         GOAL,
         algorithm_name="Greedy Best-First Search",
-        show_edge_weights=True,
+        show_edge_weights=False,
+        node_labels=node_labels,
     )
 
 
