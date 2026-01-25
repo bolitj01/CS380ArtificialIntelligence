@@ -135,6 +135,7 @@ def main():
     start_conflicts = conflicts(start)
     end_conflicts = conflicts(end)
 
+    # Print results
     print(f"\n{'='*60}")
     print(f"N-Queens Hill Climbing Results (N={N})")
     print(f"{'='*60}")
