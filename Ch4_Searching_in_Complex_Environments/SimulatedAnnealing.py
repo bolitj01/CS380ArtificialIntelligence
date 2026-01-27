@@ -1,7 +1,6 @@
-import time
 import random
 import math
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,18 +19,18 @@ LIMIT = 2500  # iteration limit for schedule
 
 
 def exp_schedule(k=K, lam=LAM, limit=LIMIT) -> Callable:
-    """Exponential temperature schedule for simulated annealing.
+    """Exponential temperature schedule for simulated annealing. Based on the standard formula Temperature(time_step) = k * e^(-lam * time_step).
     
     Args:
         k: Scaling factor (higher = higher initial temperature)
         lam: Cooling rate (higher = faster cooling)
+        time_step: current iteration/time step
         limit: Iteration limit (after this, temperature is 0)
         
     Returns:
-        A function that takes iteration t and returns temperature T
+        A function that takes iteration time_step and returns temperature
     """
-    # A lambda function is an anonymous function in Python that can take any number of arguments but has only one expression.
-    return lambda t: (k * np.exp(-lam * t) if t < limit else 0)
+    return lambda time_step: (k * np.exp(-lam * time_step) if time_step < limit else 0)
 
 
 def probability(p):
