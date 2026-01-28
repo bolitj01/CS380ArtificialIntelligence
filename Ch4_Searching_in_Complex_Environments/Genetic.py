@@ -5,8 +5,6 @@ of city indices). Tours are scored by a fitness function that rewards short,
 non-intersecting paths. Crossover uses ordered crossover (OX) to keep tours valid,
 while mutation performs a simple swap of two cities.
 """
-from __future__ import annotations
-
 import random
 from typing import List, Tuple
 
@@ -21,11 +19,12 @@ from tsp import (
 )
 
 # Hyperparameters
-NUM_CITIES = 15
-POPULATION_SIZE = 100
-GENERATIONS = 400
-MUTATION_RATE = 0.2
+NUM_CITIES = 25
+POPULATION_SIZE = 100 # number of individuals in each generation
+GENERATIONS = 200 # repetitions of selection, crossover, mutation
+MUTATION_RATE = 0.2 # probability of mutation per child
 ELITE_COUNT = 2  # number of top individuals carried forward each generation
+STOP_ON_GOAL = False  # whether to stop when 0 intersections found (True) or run all generations (False)
 
 # Fitness weights
 INTERSECTION_PENALTY = 5.0  # how much each edge crossing hurts fitness
@@ -88,10 +87,29 @@ def genetic_algorithm_tsp(cities: List[Tuple[float, float]],
     population: List[Tour] = [random_tour(len(cities)) for _ in range(pop_size)]
 
     best_initial = max(population, key=lambda t: fitness(t, cities))
+    best_global = best_initial
 
-    for _ in range(ngen):
+    for gen in range(ngen):
         scored = [(tour, fitness(tour, cities)) for tour in population]
         scored.sort(key=lambda x: x[1], reverse=True)
+
+        # Track best found so far
+        current_best = scored[0][0]
+        if fitness(current_best, cities) > fitness(best_global, cities):
+            best_global = current_best
+
+        # Print progress every 10 generations
+        if (gen + 1) % 10 == 0:
+            best_fitness = scored[0][1]
+            avg_fitness = sum(score for _, score in scored) / len(scored)
+            best_dist = tour_distance(best_global, cities)
+            best_inter = count_intersections(best_global, cities)
+            print(f"Gen {gen + 1:3d}: Best fitness={best_fitness:.6f}, Avg fitness={avg_fitness:.6f} | Best tour: dist={best_dist:.2f}, intersections={best_inter}")
+        
+        # Early stopping: if we found a tour with no intersections, we're done
+        if STOP_ON_GOAL and count_intersections(best_global, cities) == 0:
+            print(f"\n✓ Optimal solution found at generation {gen + 1}! No edge intersections.")
+            break
 
         # Elitism: carry best tours forward unchanged
         next_population: List[Tour] = [tour for tour, _ in scored[:elite]]
@@ -106,7 +124,7 @@ def genetic_algorithm_tsp(cities: List[Tuple[float, float]],
 
         population = next_population
 
-    best_final = max(population, key=lambda t: fitness(t, cities))
+    best_final = best_global
     return best_initial, best_final
 
 
