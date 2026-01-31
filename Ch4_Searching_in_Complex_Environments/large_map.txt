@@ -1,0 +1,16 @@
+15 15
+P M F Q P P M F P P M P F Q P
+F F P P P M Q Q M P P M P P F
+P P P M M F F P P P M Q P M P
+M Q Q P P P P P M M F P P P M
+P P P P M M P F F P P P M F P
+P M M F F P P P P P Q M P P P
+Q Q P P P P M M M P P P F P M
+P P P M M F F P P P M P P M F
+M M P P P P P P Q Q F P M P P
+P P P F M M P P P P P M P F Q
+F M P P P Q Q M P F P P P P M
+P P M F P P P P M M Q P F M P
+M F P P M M P F P P P P P P F
+P P Q P P P M P M F P M Q M P
+Q P P M F P P P P P M P P P P
