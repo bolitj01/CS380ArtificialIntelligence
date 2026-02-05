@@ -11,6 +11,11 @@ from TicTacToe import GameState, Game
 
 from AlphaBetaSearch import alpha_beta_search
 from MinimaxDepthLimitedSearch import minmax_decision_depth_limited
+from MonteCarloTreeSearch import (
+    monte_carlo_tree_search,
+    load_transposition_table,
+    save_transposition_table,
+)
 
 Position = Tuple[int, int]
 Board = Dict[Position, str]
@@ -21,12 +26,11 @@ class ConnectFour(Game):
     row, or in a square directly above an occupied square.  Traditionally
     played on a 7x6 board and requiring 4 in a row."""
 
-    def __init__(self, h: int = 7, v: int = 6, k: int = 4, minimax_first: bool = True) -> None:
+    def __init__(self, h: int = 7, v: int = 6, k: int = 4, first_player: str = "X") -> None:
         self.h = h
         self.v = v
         self.k = k
         moves = [(x, y) for x in range(1, h + 1) for y in range(1, v + 1)]
-        first_player = "X" if minimax_first else "O"
         self.initial = GameState(to_move=first_player, utility=0, board={}, moves=moves)
 
     def actions(self, state: GameState) -> List[Position]:
@@ -172,74 +176,91 @@ class ConnectFour(Game):
         return score
 
 
-def clear_screen() -> None:
-    os.system("cls" if os.name == "nt" else "clear")
-
-
-def play_connect_four(
+def play_game(
     delay: float,
-    minimax_first: bool = True,
+    player_x_algo: str = "minimax",
+    player_o_algo: str = "alphabeta",
     use_heuristic: bool = True,
     minimax_depth: int = 6,
     alphabeta_depth: int = 7,
+    mcts_simulations: int = 1000,
     show_output: bool = True,
+    mcts_debug: bool = False,
 ) -> str:
-    """Play Connect Four with Minimax (X) vs Alpha-Beta (O).
+    """Play Connect Four with two chosen algorithms.
     
     Args:
         delay: Display delay between moves in seconds
-        minimax_first: If True, Minimax goes first (X); if False, Alpha-Beta goes first (O)
-        use_heuristic: If True, use heuristic evaluation at depth cutoff; if False, just use terminal utility
+        player_x_algo: Algorithm for player X ('minimax', 'alphabeta', or 'mcts')
+        player_o_algo: Algorithm for player O ('minimax', 'alphabeta', or 'mcts')
+        use_heuristic: If True, use heuristic evaluation at depth cutoff
         minimax_depth: Search depth for Minimax algorithm
         alphabeta_depth: Search depth for Alpha-Beta algorithm
+        mcts_simulations: Number of simulations for MCTS
         show_output: If True, display game progress; if False, play silently
+        mcts_debug: If True, show MCTS diagnostic info
         
     Returns:
-        Winner: 'X' (Minimax), 'O' (Alpha-Beta), or 'Draw'
+        Winner: 'X', 'O', or 'Draw'
     """
-    game = ConnectFour(minimax_first=minimax_first)
+    # Load transposition table if MCTS is used
+    if "mcts" in (player_x_algo, player_o_algo):
+        load_transposition_table()
+    
+    game = ConnectFour(first_player="X")
     state = game.initial
     move_number = 1
     
-    # Track timing for each algorithm
-    minimax_time = 0.0
-    alpha_beta_time = 0.0
+    # Algorithm names for display
+    algo_names = {
+        "minimax": "Minimax",
+        "alphabeta": "Alpha-Beta",
+        "mcts": "MCTS"
+    }
+    
+    # Track timing for each player
+    player_x_time = 0.0
+    player_o_time = 0.0
 
     if show_output:
-        clear_screen()
-        print("=" * 40)
-        print("Connect Four: Minimax (X) vs Alpha-Beta (O)")
-        print("=" * 40)
+        print("=" * 50)
+        print(f"Connect Four: {algo_names[player_x_algo]} (X) vs {algo_names[player_o_algo]} (O)")
+        print("=" * 50)
         game.display(state)
         time.sleep(delay)
 
     while not game.terminal_test(state):
         current_player = state.to_move
+        current_algo = player_x_algo if current_player == "X" else player_o_algo
 
-        if current_player == "O":
-            if show_output:
-                print(f"Move {move_number}: Player O (Alpha-Beta) thinking...")
-            start_time = time.time()
-            move = alpha_beta_search(state, game, depth_limit=alphabeta_depth, use_heuristic=use_heuristic)
-            elapsed = time.time() - start_time
-            alpha_beta_time += elapsed
-            if show_output:
-                print(f"  Alpha-Beta took {elapsed:.3f}s")
-        else:
-            if show_output:
-                print(f"Move {move_number}: Player X (Minimax) thinking...")
-            start_time = time.time()
-            move = minmax_decision_depth_limited(state, game, depth_limit=minimax_depth, use_heuristic=use_heuristic)
-            elapsed = time.time() - start_time
-            minimax_time += elapsed
-            if show_output:
-                print(f"  Minimax took {elapsed:.3f}s")
+        if show_output:
+            print(f"Move {move_number}: Player {current_player} ({algo_names[current_algo]}) thinking...")
         
+        start_time = time.time()
+        
+        # Select algorithm and get move
+        if current_algo == "minimax":
+            move = minmax_decision_depth_limited(state, game, depth_limit=minimax_depth, use_heuristic=use_heuristic)
+        elif current_algo == "alphabeta":
+            move = alpha_beta_search(state, game, depth_limit=alphabeta_depth, use_heuristic=use_heuristic)
+        elif current_algo == "mcts":
+            move = monte_carlo_tree_search(state, game, num_simulations=mcts_simulations, debug=mcts_debug)
+        else:
+            raise ValueError(f"Unknown algorithm: {current_algo}")
+        
+        elapsed = time.time() - start_time
+        
+        if current_player == "X":
+            player_x_time += elapsed
+        else:
+            player_o_time += elapsed
+            
+        if show_output:
+            print(f"  {algo_names[current_algo]} took {elapsed:.3f}s")
 
         state = game.result(state, move)
 
         if show_output:
-            clear_screen()
             print(f"Move {move_number}: Player {current_player} -> Column {move[0]}")
             game.display(state)
             time.sleep(delay)
@@ -249,118 +270,170 @@ def play_connect_four(
     if state.utility == 1:
         winner = "X"
         if show_output:
-            print("Result: X (Minimax) wins!")
+            print(f"Result: X ({algo_names[player_x_algo]}) wins!")
     elif state.utility == -1:
         winner = "O"
         if show_output:
-            print("Result: O (Alpha-Beta) wins!")
+            print(f"Result: O ({algo_names[player_o_algo]}) wins!")
     else:
         winner = "Draw"
         if show_output:
             print("Result: Draw!")
 
     if show_output:
-        print("\n" + "=" * 40)
-        print("Search Algorithm Timing Summary")
-        print("=" * 40)
-        print(f"Minimax (Depth-Limited):  {minimax_time:.3f}s")
-        print(f"Alpha-Beta (Depth-Limited): {alpha_beta_time:.3f}s")
-        print(f"Total time:               {minimax_time + alpha_beta_time:.3f}s")
-        print("=" * 40)
+        print("\n" + "=" * 50)
+        print("Timing Summary")
+        print("=" * 50)
+        print(f"Player X ({algo_names[player_x_algo]}): {player_x_time:.3f}s")
+        print(f"Player O ({algo_names[player_o_algo]}): {player_o_time:.3f}s")
+        print(f"Total time: {player_x_time + player_o_time:.3f}s")
+        print("=" * 50)
+    
+    # Save transposition table if MCTS was used
+    if "mcts" in (player_x_algo, player_o_algo):
+        save_transposition_table()
 
     return winner
 
 
 def play_tournament(
     num_games: int = 100,
+    player_x_algo: str = "minimax",
+    player_o_algo: str = "alphabeta",
     minimax_depth: int = 6,
     alphabeta_depth: int = 7,
+    mcts_simulations: int = 1000,
     use_heuristic: bool = True,
 ) -> None:
     """Play multiple games and track win statistics.
     
     Args:
         num_games: Number of games to play
+        player_x_algo: Algorithm for player X ('minimax', 'alphabeta', or 'mcts')
+        player_o_algo: Algorithm for player O ('minimax', 'alphabeta', or 'mcts')
         minimax_depth: Search depth for Minimax algorithm
         alphabeta_depth: Search depth for Alpha-Beta algorithm
+        mcts_simulations: Number of simulations for MCTS
         use_heuristic: Whether to use heuristic evaluation
     """
-    minimax_wins = 0
-    alphabeta_wins = 0
+    # Load transposition table if MCTS is used
+    if "mcts" in (player_x_algo, player_o_algo):
+        load_transposition_table()
+    
+    algo_names = {
+        "minimax": "Minimax",
+        "alphabeta": "Alpha-Beta",
+        "mcts": "MCTS"
+    }
+    
+    player_x_wins = 0
+    player_o_wins = 0
     draws = 0
     
-    print("=" * 50)
+    print("=" * 60)
     print(f"Playing {num_games} games tournament")
-    print(f"Minimax depth: {minimax_depth}, Alpha-Beta depth: {alphabeta_depth}")
+    print(f"Player X: {algo_names[player_x_algo]}, Player O: {algo_names[player_o_algo]}")
     print(f"Heuristic: {'Enabled' if use_heuristic else 'Disabled'}")
-    print("=" * 50)
+    print("=" * 60)
     
     for game_num in range(1, num_games + 1):
-        # Alternate who goes first
-        minimax_first = (game_num % 2 == 1)
+        # Alternate who goes first by swapping X and O assignments
+        if game_num % 2 == 1:
+            current_x_algo = player_x_algo
+            current_o_algo = player_o_algo
+        else:
+            current_x_algo = player_o_algo
+            current_o_algo = player_x_algo
         
-        clear_screen()
-        print("=" * 50)
+        print("=" * 60)
         print(f"Tournament Progress: Game {game_num}/{num_games}")
-        print("=" * 50)
-        print(f"Minimax (X) wins: {minimax_wins}")
-        print(f"Alpha-Beta (O) wins: {alphabeta_wins}")
+        print("=" * 60)
+        print(f"{algo_names[player_x_algo]} wins: {player_x_wins}")
+        print(f"{algo_names[player_o_algo]} wins: {player_o_wins}")
         print(f"Draws: {draws}")
-        print("=" * 50)
+        print("=" * 60)
         print(f"Playing game {game_num}...")
-        print(f"  {'Minimax' if minimax_first else 'Alpha-Beta'} goes first")
+        print(f"  X: {algo_names[current_x_algo]}, O: {algo_names[current_o_algo]}")
         
-        winner = play_connect_four(
+        winner = play_game(
             delay=0,
-            minimax_first=minimax_first,
+            player_x_algo=current_x_algo,
+            player_o_algo=current_o_algo,
             use_heuristic=use_heuristic,
             minimax_depth=minimax_depth,
             alphabeta_depth=alphabeta_depth,
+            mcts_simulations=mcts_simulations,
             show_output=False,
         )
         
-        if winner == "X":
-            minimax_wins += 1
-        elif winner == "O":
-            alphabeta_wins += 1
+        # Track wins for the original player assignments
+        if game_num % 2 == 1:
+            # Normal assignment
+            if winner == "X":
+                player_x_wins += 1
+            elif winner == "O":
+                player_o_wins += 1
+            else:
+                draws += 1
         else:
-            draws += 1
+            # Swapped assignment
+            if winner == "X":
+                player_o_wins += 1
+            elif winner == "O":
+                player_x_wins += 1
+            else:
+                draws += 1
     
     # Final results
-    clear_screen()
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print(f"Tournament Complete: {num_games} games played")
-    print("=" * 50)
-    print(f"Minimax (X) wins: {minimax_wins} ({minimax_wins/num_games*100:.1f}%)")
-    print(f"Alpha-Beta (O) wins: {alphabeta_wins} ({alphabeta_wins/num_games*100:.1f}%)")
+    print("=" * 60)
+    print(f"{algo_names[player_x_algo]} wins: {player_x_wins} ({player_x_wins/num_games*100:.1f}%)")
+    print(f"{algo_names[player_o_algo]} wins: {player_o_wins} ({player_o_wins/num_games*100:.1f}%)")
     print(f"Draws: {draws} ({draws/num_games*100:.1f}%)")
-    print("=" * 50)
+    print("=" * 60)
+    
+    # Save transposition table if MCTS was used
+    if "mcts" in (player_x_algo, player_o_algo):
+        save_transposition_table()
 
 
 if __name__ == "__main__":
     # Configuration
     delay = 0.3  # seconds
-    minimax_first = True  # Set to False to have Alpha-Beta go first
-    use_heuristic = True  # Set to False to disable heuristic evaluation at depth cutoff
-    minimax_depth = 5  # Search depth for Minimax
-    alphabeta_depth = 7  # Search depth for Alpha-Beta
+    use_heuristic = True  # Set to False to disable heuristic evaluation
+    
+    # Algorithm settings
+    minimax_depth = 6  # Search depth for Minimax
+    alphabeta_depth = 5  # Search depth for Alpha-Beta
+    mcts_simulations = 1000  # Number of simulations for MCTS
+    
+    # Player algorithm selection - choose from: 'minimax', 'alphabeta', 'mcts'
+    player_x_algo = "alphabeta"  # Algorithm for Player X
+    player_o_algo = "mcts"  # Algorithm for Player O
     
     # Mode selection
-    play_single_game = False  # Set to True for single game, False for tournament
+    play_single_game = True  # Set to True for single game, False for tournament
     num_tournament_games = 100  # Number of games in tournament mode
     
     if play_single_game:
-        play_connect_four(
+        play_game(
             delay=delay,
-            minimax_first=minimax_first,
+            player_x_algo=player_x_algo,
+            player_o_algo=player_o_algo,
             use_heuristic=use_heuristic,
             minimax_depth=minimax_depth,
             alphabeta_depth=alphabeta_depth,
+            mcts_simulations=mcts_simulations,
+            mcts_debug=True,  # Show MCTS diagnostics in single game mode
         )
     else:
         play_tournament(
             num_games=num_tournament_games,
+            player_x_algo=player_x_algo,
+            player_o_algo=player_o_algo,
             minimax_depth=minimax_depth,
             alphabeta_depth=alphabeta_depth,
+            mcts_simulations=mcts_simulations,
             use_heuristic=use_heuristic,
         )
