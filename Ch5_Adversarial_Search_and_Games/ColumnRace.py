@@ -144,6 +144,53 @@ class RacingGame:
         else:
             return 0
     
+    def heuristic_eval(self, state):
+        """Smart evaluation function for non-terminal states.
+        
+        Evaluates based on:
+        - Win/loss states (highest priority)
+        - Piece progress toward goal (linear value)
+        - Advanced position bonus (exponential value for pieces near goal)
+        - Risk assessment (opponent pieces that could capture)
+        """
+        # Terminal states get massive scores
+        if state.utility != 0:
+            return state.utility * 10000
+        
+        score = 0
+        
+        # Evaluate White pieces (moving toward position 9)
+        for pos in state.pieces['W']:
+            if pos >= 9:
+                score += 1000  # Piece at goal
+            else:
+                # Linear progress bonus (0-9 positions = 0-90 points)
+                score += pos * 10
+                # Exponential bonus for advanced pieces (increases value near goal)
+                score += (pos ** 2) * 2  # pos=8: +128, pos=7: +98, etc.
+        
+        # Evaluate Black pieces (moving toward position 0)
+        for pos in state.pieces['B']:
+            if pos <= 0:
+                score -= 1000  # Piece at goal
+            else:
+                # Linear progress bonus for Black (inverted)
+                score -= (9 - pos) * 10
+                # Exponential bonus for Black's advanced pieces
+                score -= ((9 - pos) ** 2) * 2
+        
+        # Strategic bonus: pieces that threaten captures
+        # If White pieces are on same column as Black, that's risky for Black
+        for w_pos in state.pieces['W']:
+            for b_pos in state.pieces['B']:
+                if 0 < w_pos < 9 and 0 < b_pos < 9:  # Both on board
+                    distance = abs(w_pos - b_pos)
+                    if distance <= 3:  # Close proximity
+                        # Slight bonus for being near opponent (capture opportunity)
+                        score += (4 - distance) * 5
+        
+        return score
+    
     @staticmethod
     def _opponent(player):
         """Get opponent of a player."""
@@ -247,8 +294,10 @@ class RacingGameGUI:
             self.root.after(2000, self.roll_dice)
             return
         
-        # Get AI decision
-        best_move = expect_minimax_decision_depth_limited(self.state, self.game, depth=6)
+        # Get AI decision with smart evaluation function
+        best_move = expect_minimax_decision_depth_limited(
+            self.state, self.game, depth=6, eval_fn=self.game.heuristic_eval
+        )
         
         if best_move is None:
             self.update_info("AI passes (no legal moves)")
@@ -262,7 +311,7 @@ class RacingGameGUI:
         old_pos = self.state.pieces['B'][piece_idx]
         new_pos = old_pos - self.state.chance  # Black moves backwards (towards 0)
         move_str = f"Piece {piece_idx} from position {old_pos} to {new_pos}"
-        ai_info = f"AI Move: {move_str}\nDie Roll: {self.state.chance}\n\nExpectiminimax evaluates:\n• All possible future states\n• Both players' moves\n• Chance outcomes (die rolls)\n• Uses depth-limited search (depth=2)"
+        ai_info = f"AI Move: {move_str}\nDie Roll: {self.state.chance}\n\nExpectiminimax evaluates:\n• Piece progress toward goal\n• Strategic positioning\n• Capture opportunities\n• All chance outcomes (dice)\n• Depth-limited search (depth=6)"
         
         self.ai_text.config(state=tk.NORMAL)
         self.ai_text.delete(1.0, tk.END)
@@ -291,7 +340,7 @@ class RacingGameGUI:
     
     def on_canvas_click(self, event):
         """Handle canvas clicks for piece selection via grid."""
-        if self.state.to_move != 'W' or not self.legal_moves:
+        if self.state.to_move != 'W' or not self.legal_moves or self.state.chance is None:
             return
         
         x, y = event.x, event.y
