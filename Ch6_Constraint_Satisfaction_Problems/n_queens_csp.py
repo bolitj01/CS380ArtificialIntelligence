@@ -7,6 +7,21 @@ and various constraint propagation and heuristic techniques.
 Constraints:
 1. One queen per column (enforced by representation)
 2. No two queens can attack each other (no same row, no same diagonal)
+
+USAGE:
+------
+Edit the configuration toggles in the main() function to change settings:
+  - N: Board size (8-Queens, 20-Queens, etc.)
+  - USE_MRV: Enable Minimum Remaining Values heuristic
+  - USE_LCV: Enable Least Constraining Value heuristic
+  - USE_FORWARD_CHECKING: Enable Forward Checking constraint propagation
+
+The program will automatically visualize solutions for boards up to 50x50.
+
+Example configurations:
+  N=8, USE_MRV=True, USE_LCV=False       # Basic MRV
+  N=8, USE_MRV=True, USE_LCV=True        # MRV + LCV
+  N=20, USE_MRV=True, USE_LCV=False      # Larger 20-Queens
 """
 
 import os
@@ -21,6 +36,7 @@ CH4_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "Ch4_Searching_in_Complex_En
 sys.path.insert(0, CH4_DIR)
 
 from n_queens import draw_board, QUEEN_IMG_PATH, QUEEN_IMG
+from GeneralBacktracking import GeneralizedBacktrackingSearcher
 
 
 class NQueensCSP:
@@ -46,6 +62,8 @@ class NQueensCSP:
         self.domains = {col: set(range(n)) for col in self.variables}
         # Assignment: maps column -> row (None if unassigned)
         self.assignment: Dict[int, Optional[int]] = {col: None for col in self.variables}
+        # Build neighbors for each column (all other columns)
+        self.neighbors = {col: set(self.variables) - {col} for col in self.variables}
         
 
     
@@ -112,6 +130,78 @@ class NQueensCSP:
         print(f"Nodes explored: {self.nodes_explored}")
         print(f"Backtracks: {self.backtracks}")
         print(f"{'='*50}\n")
+
+
+def main():
+    """
+    Main function to solve a single N-Queens problem using backtracking search.
+    
+    Configure the following toggles before running:
+    - N: Board size
+    - USE_MRV: Use Minimum Remaining Values heuristic
+    - USE_LCV: Use Least Constraining Value heuristic
+    - USE_FORWARD_CHECKING: Use forward checking constraint propagation
+    """
+    
+    # ===== CONFIGURATION TOGGLES =====
+    N = 30                         
+    # Board size (change this to solve different N-Queens)
+    USE_MRV = True                      
+    # Enable Minimum Remaining Values heuristic
+    USE_LCV = True                     
+    # Enable Least Constraining Value heuristic
+    USE_FORWARD_CHECKING = False        
+    # Enable Forward Checking
+    # ================================
+    
+    print(f"\n{'='*70}")
+    print(f"N-Queens CSP Backtracking Search")
+    print(f"{'='*70}\n")
+    
+    print(f"Board Size: {N}-Queens")
+    print(f"Heuristics:")
+    print(f"  MRV (Minimum Remaining Values): {USE_MRV}")
+    print(f"  LCV (Least Constraining Value): {USE_LCV}")
+    print(f"  Forward Checking: {USE_FORWARD_CHECKING}\n")
+    
+    # Create CSP
+    csp = NQueensCSP(N)
+    searcher = GeneralizedBacktrackingSearcher(csp)
+    
+    # Solve the problem
+    import time
+    start_time = time.time()
+    
+    if searcher.search(use_mrv=USE_MRV, use_lcv=USE_LCV, use_forward_checking=USE_FORWARD_CHECKING):
+        end_time = time.time()
+        solution = {col: csp.assignment[col] for col in csp.variables}
+        
+        print(f"✓ Solution found!")
+        print(f"\nSolution: {[solution[col] for col in range(N)]}")
+        print(f"\nSearch Statistics:")
+        print(f"  Time: {end_time - start_time:.3f} seconds")
+        print(f"  Nodes explored: {searcher.nodes_explored}")
+        print(f"  Backtracks: {searcher.backtracks}")
+        print(f"  Total assignments: {searcher.assignments}")
+        
+        # Visualize if board is small enough
+        if N <= 50:
+            print(f"\nGenerating visualization...")
+            csp.visualize_solution(solution)
+        else:
+            print(f"\n(Board size {N}x{N} is too large for GUI visualization)")
+    else:
+        end_time = time.time()
+        print(f"✗ No solution found.")
+        print(f"\nSearch Statistics:")
+        print(f"  Time: {end_time - start_time:.3f} seconds")
+        print(f"  Nodes explored: {searcher.nodes_explored}")
+        print(f"  Backtracks: {searcher.backtracks}")
+        print(f"  Total assignments: {searcher.assignments}")
+
+
+if __name__ == "__main__":
+    main()
 
 
 
