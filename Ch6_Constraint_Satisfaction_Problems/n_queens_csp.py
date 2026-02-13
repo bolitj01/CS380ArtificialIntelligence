@@ -27,16 +27,15 @@ Example configurations:
 import os
 import sys
 from typing import Dict, List, Optional, Set, Tuple
+
+# Add parent directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-# Add Ch4 to path to import existing utilities
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CH4_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "Ch4_Searching_in_Complex_Environments")
-sys.path.insert(0, CH4_DIR)
-
-from n_queens import draw_board, QUEEN_IMG_PATH, QUEEN_IMG
-from GeneralBacktracking import GeneralizedBacktrackingSearcher
+from Ch4_Searching_in_Complex_Environments.n_queens import draw_board, QUEEN_IMG_PATH, QUEEN_IMG
+from BacktrackingSearch import GeneralizedBacktrackingSearcher
 
 
 class NQueensCSP:
@@ -96,6 +95,42 @@ class NQueensCSP:
         
         return True
     
+    def propagate_constraints(self) -> bool:
+        """
+        After an assignment, remove conflicting values from unassigned neighbors' domains.
+        This dramatically reduces the search space.
+        
+        Returns:
+            True if propagation succeeded, False if a domain became empty
+        """
+        # Find all assigned queens
+        for assigned_col, assigned_row in self.assignment.items():
+            if assigned_row is None:
+                continue
+            
+            # For each unassigned column, remove conflicting rows
+            for col in self.variables:
+                if self.assignment[col] is not None:
+                    continue
+                
+                # Remove rows that would conflict with this assigned queen
+                rows_to_remove = set()
+                for row in self.domains[col]:
+                    # Same row conflict
+                    if row == assigned_row:
+                        rows_to_remove.add(row)
+                    # Diagonal conflict
+                    elif abs(row - assigned_row) == abs(col - assigned_col):
+                        rows_to_remove.add(row)
+                
+                self.domains[col] -= rows_to_remove
+                
+                # If domain becomes empty, this path is invalid
+                if not self.domains[col]:
+                    return False
+        
+        return True
+    
 
     
     def get_state_tuple(self) -> Tuple[int, ...]:
@@ -140,18 +175,14 @@ def main():
     - N: Board size
     - USE_MRV: Use Minimum Remaining Values heuristic
     - USE_LCV: Use Least Constraining Value heuristic
-    - USE_FORWARD_CHECKING: Use forward checking constraint propagation
+    - VISUALIZE: Show GUI visualization of solution
     """
     
     # ===== CONFIGURATION TOGGLES =====
-    N = 30                         
-    # Board size (change this to solve different N-Queens)
-    USE_MRV = True                      
-    # Enable Minimum Remaining Values heuristic
-    USE_LCV = True                     
-    # Enable Least Constraining Value heuristic
-    USE_FORWARD_CHECKING = False        
-    # Enable Forward Checking
+    N = 100                            # Board size (change this to solve different N-Queens)
+    USE_MRV = True                      # Enable Minimum Remaining Values heuristic
+    USE_LCV = False                     # Enable Least Constraining Value heuristic
+    VISUALIZE = False                   # Show GUI visualization of solution (default: False)
     # ================================
     
     print(f"\n{'='*70}")
@@ -162,7 +193,7 @@ def main():
     print(f"Heuristics:")
     print(f"  MRV (Minimum Remaining Values): {USE_MRV}")
     print(f"  LCV (Least Constraining Value): {USE_LCV}")
-    print(f"  Forward Checking: {USE_FORWARD_CHECKING}\n")
+    print(f"  Visualization: {VISUALIZE}\n")
     
     # Create CSP
     csp = NQueensCSP(N)
@@ -172,7 +203,7 @@ def main():
     import time
     start_time = time.time()
     
-    if searcher.search(use_mrv=USE_MRV, use_lcv=USE_LCV, use_forward_checking=USE_FORWARD_CHECKING):
+    if searcher.search(use_mrv=USE_MRV, use_lcv=USE_LCV):
         end_time = time.time()
         solution = {col: csp.assignment[col] for col in csp.variables}
         
@@ -184,12 +215,13 @@ def main():
         print(f"  Backtracks: {searcher.backtracks}")
         print(f"  Total assignments: {searcher.assignments}")
         
-        # Visualize if board is small enough
-        if N <= 50:
-            print(f"\nGenerating visualization...")
-            csp.visualize_solution(solution)
-        else:
-            print(f"\n(Board size {N}x{N} is too large for GUI visualization)")
+        # Visualize if enabled and board is not too large
+        if VISUALIZE:
+            if N <= 50:
+                print(f"\nGenerating visualization...")
+                csp.visualize_solution(solution)
+            else:
+                print(f"\n(Board size {N}x{N} is too large for GUI visualization)")
     else:
         end_time = time.time()
         print(f"✗ No solution found.")

@@ -8,10 +8,10 @@ import numpy as np
 from n_queens import random_state, conflicts, value, draw_board, draw_fitness_landscape
 
 # Configuration
-N = 12  # size of the board and number of queens
-K = 22  # scaling factor for temperature schedule
-LAM = 0.005  # cooling rate for exponential decay
-LIMIT = 2500  # iteration limit for schedule
+N = 50  # size of the board and number of queens
+K = 13  # scaling factor for temperature schedule
+LAM = 0.003  # cooling rate for exponential decay
+LIMIT = 10000  # iteration limit for schedule
 # Explanation of parameters:
 # K: Higher values lead to higher initial temperatures, allowing more exploration.
 # LAM: Higher values lead to faster cooling, reducing exploration sooner.

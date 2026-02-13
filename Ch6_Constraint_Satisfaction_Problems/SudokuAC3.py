@@ -18,8 +18,8 @@ from typing import Dict, List, Optional, Set, Tuple
 from collections import deque
 import time
 import random
-from GeneralBacktracking import GeneralizedBacktrackingSearcher
-from GeneralAC3 import GeneralAC3
+from BacktrackingSearch import GeneralizedBacktrackingSearcher
+from AC3ConstraintPropagation import GeneralAC3
 
 
 class SudokuCSP:

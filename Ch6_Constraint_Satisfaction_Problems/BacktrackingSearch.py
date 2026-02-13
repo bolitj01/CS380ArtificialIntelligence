@@ -15,6 +15,10 @@ Optional methods for enhanced functionality:
 - select_unassigned_variable(): custom variable selection (default: first unassigned)
 - order_domain_values(): custom value ordering (default: sorted)
 - propagate_constraints(): constraint propagation (like AC-3)
+
+Supported Heuristics:
+- MRV (Minimum Remaining Values): Select variable with smallest domain
+- LCV (Least Constraining Value): Order values by number of constraints removed
 """
 
 from typing import Dict, List, Optional, Set, Any
@@ -23,7 +27,7 @@ from typing import Dict, List, Optional, Set, Any
 class GeneralizedBacktrackingSearcher:
     """
     Performs backtracking search on any CSP with optional constraint propagation
-    and heuristics (MRV, LCV, Forward Checking).
+    and heuristics (MRV, LCV).
     """
     
     def __init__(self, csp: Any):
@@ -39,7 +43,6 @@ class GeneralizedBacktrackingSearcher:
         self.assignments = 0
         self.use_mrv = True
         self.use_lcv = True
-        self.use_forward_checking = False
     
     def select_unassigned_variable(self) -> Optional[Any]:
         """
@@ -153,83 +156,23 @@ class GeneralizedBacktrackingSearcher:
             return self.csp.propagate_constraints()
         return True
     
-    def forward_check(self, var: Any, value: Any) -> Optional[Dict[Any, Set[Any]]]:
-        """
-        Perform forward checking: remove inconsistent values from unassigned neighbors.
-        Only used if use_forward_checking is True and CSP has neighbors and is_consistent.
-        
-        Args:
-            var: Variable just assigned (assignment[var] is already set to value)
-            value: Value assigned to var
-            
-        Returns:
-            Dictionary of removed values for each variable (for backtracking), or None if inconsistent
-        """
-        if not self.use_forward_checking or not hasattr(self.csp, 'neighbors') or not hasattr(self.csp, 'is_consistent'):
-            return None
-        
-        removed = {}
-        
-        for neighbor in self.csp.neighbors.get(var, set()):
-            if self.csp.assignment[neighbor] is not None:
-                continue
-            
-            removed[neighbor] = set()
-            
-            # Check which values in neighbor's domain are still consistent
-            # Note: self.csp.assignment[var] is already set to value
-            for neighbor_value in list(self.csp.domains[neighbor]):
-                # Temporarily assign neighbor to check consistency with var's assignment
-                old_neighbor = self.csp.assignment[neighbor]
-                self.csp.assignment[neighbor] = neighbor_value
-                
-                is_consistent = self.csp.is_consistent(neighbor, neighbor_value)
-                
-                # Restore assignment
-                self.csp.assignment[neighbor] = old_neighbor
-                
-                # Remove value if not consistent
-                if not is_consistent:
-                    self.csp.domains[neighbor].remove(neighbor_value)
-                    removed[neighbor].add(neighbor_value)
-            
-            # If domain becomes empty, this assignment is inconsistent
-            if not self.csp.domains[neighbor]:
-                self.restore_domains(removed)
-                return None
-        
-        return removed
-    
-    def restore_domains(self, removed: Dict[Any, Set[Any]]):
-        """
-        Restore domain values that were removed during forward checking.
-        
-        Args:
-            removed: Dictionary mapping variables to sets of removed values
-        """
-        for var, values in removed.items():
-            self.csp.domains[var] |= values
-    
     def is_complete(self) -> bool:
         """Check if all variables are assigned."""
         return all(self.csp.assignment[var] is not None for var in self.csp.variables)
     
-    def search(self, use_mrv: bool = True, use_lcv: bool = True, 
-               use_forward_checking: bool = False) -> bool:
+    def search(self, use_mrv: bool = True, use_lcv: bool = True) -> bool:
         """
         Solve the CSP using backtracking search with optional heuristics.
         
         Args:
             use_mrv: Use Minimum Remaining Values heuristic for variable selection
             use_lcv: Use Least Constraining Value heuristic for value ordering
-            use_forward_checking: Use forward checking for constraint propagation
         
         Returns:
             True if solution found, False otherwise
         """
         self.use_mrv = use_mrv
         self.use_lcv = use_lcv
-        self.use_forward_checking = use_forward_checking
         
         self.nodes_explored = 0
         self.backtracks = 0
@@ -279,17 +222,6 @@ class GeneralizedBacktrackingSearcher:
             # Make assignment
             self.csp.assignment[var] = value
             self.assignments += 1
-            
-            # Try forward checking if enabled
-            removed = None
-            if self.use_forward_checking:
-                removed = self.forward_check(var, value)
-                if removed is None:
-                    # Forward checking detected inconsistency
-                    self.csp.assignment[var] = None
-                    self.restore_domain_state(saved_domains)
-                    self.backtracks += 1
-                    continue
             
             # Try to propagate constraints
             if self.propagate_constraints():
