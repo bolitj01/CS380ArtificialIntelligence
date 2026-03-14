@@ -179,10 +179,10 @@ def main():
     """
     
     # ===== CONFIGURATION TOGGLES =====
-    N = 100                            # Board size (change this to solve different N-Queens)
+    N = 75                            # Board size (change this to solve different N-Queens)
     USE_MRV = True                      # Enable Minimum Remaining Values heuristic
-    USE_LCV = False                     # Enable Least Constraining Value heuristic
-    VISUALIZE = False                   # Show GUI visualization of solution (default: False)
+    USE_LCV = True                     # Enable Least Constraining Value heuristic
+    VISUALIZE = True                   # Show GUI visualization of solution (default: False)
     # ================================
     
     print(f"\n{'='*70}")
