@@ -41,12 +41,20 @@ sibling(C1, C2) :-
 grandparent(G, C) :- parent(G, P), parent(P, C).
 
 %TODO Add rules for cousins and then add these parent-children facts:
+cousin(C2, C1) :- parent(P1, C1), parent(P2, C2), sibling(P1, P2), P1 \= P2.
+
 % travis - noah
 % travis - lydia
 % travis - micah
 % travis - luke
 % mandy - zay
 % mandy - kai
+parent(travis, noah).
+parent(travis, lydia).
+parent(travis, micah).
+parent(travis, luke).
+parent(mandy, zay).
+parent(mandy, kai).
 
 % Queries are made with predicates and variables
 % The ?- symbol is used to ask a question about the facts and rules defined in the program.
