@@ -10,5 +10,5 @@ likes(tommy, volleyball).
 % Anything I like is cool
 cool(X) :- likes(tommy, X).
 experienced(Person) :-
-    years_of_teaching(Person, Y),
+    years_of_teaching(Person, Y), % logical AND
     Y > 5.
