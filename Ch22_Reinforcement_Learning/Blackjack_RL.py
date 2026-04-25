@@ -1,4 +1,4 @@
-#This code is restructured from the tutorial 
+#This code is restructured from the tutorial in Python Gymnasium's documentation, available at https://gymnasium.farama.org/introduction/train_agent/ 
 
 from collections import defaultdict
 import gymnasium as gym
